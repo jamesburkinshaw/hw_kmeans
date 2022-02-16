@@ -27,7 +27,33 @@ hw_kmeans_ani <- function(x, k, colx, coly) {
   
   #plot intial clusters and centroids
   plot(x[c(colx,coly)],col=x$cluster)
-  points(centroids[c(colx,coly)],col=1:k,pch=4, cex=3)
+  points(centroids[c(colx,coly)],col=centroids$cluster,pch=4, cex=3)
+  
+  convergence <- FALSE
+  #loop through points
+  for (r in 1:nrow(x)) {
+    p <- x[r,]
+    points(p[c(colx,coly)],col=p$cluster,pch=19, cex=1)
+    Sys.sleep(0.1)
+    
+    #check which cluster to reassign to if any
+    
+      #calculate sum of Squares of current cluster without row
+      
+      #calculate sum of squares of other clusters with row
+    
+    #recalculate means
+    
+    #do centroids move? if not then convergence
+    
+    #move centroids
+    
+  }
+  
+  #TODO: Or Randomly Sample Points?
+  #point <- x[0,]
+  #point <- rbind(point,x[sample(nrow(x), 1),])
+  #points(point[c(colx,coly)],col=point$cluster,pch=19, cex=1)
   
 }
 

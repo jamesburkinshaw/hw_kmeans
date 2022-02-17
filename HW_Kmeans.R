@@ -1,4 +1,4 @@
-hw_kmeans_ani <- function(x, k, colx, coly) {
+hw_kmeans <- function(x, k, colx, coly) {
   
   get_centroids <- function(x, k){
     #split data into clusters
@@ -27,9 +27,8 @@ hw_kmeans_ani <- function(x, k, colx, coly) {
     return(centroids)
   }
   
-  get_sum_of_squares <- function (x,k) {
+  get_sum_of_squares <- function (x,k,centroids) {
     error <- 0
-    
     #split data into clusters
     splitx <- split(x, x$cluster)
     dimensions <- ncol(x)-1
@@ -39,15 +38,16 @@ hw_kmeans_ani <- function(x, k, colx, coly) {
       #loop through dimensions
       for (d in 1:dimensions) {
         ssd <- 0
+        #loop through rows in dimension
         for (m in cluster[,d]) {
-          ssd <- ssd + ((m-mean(cluster[,d]))^2)
+          ssd <- ssd + ((m-centroids[c,d])^2)
         }
         ssd < ssd/(nrow(cluster[,d])-1)
-        #add dimension sse to total
+        
+        #add dimension error to total
         error <- error + ssd
       }
     }
-    print(error)
     return(error)
   }
   
@@ -62,25 +62,25 @@ hw_kmeans_ani <- function(x, k, colx, coly) {
   plot(x[c(colx,coly)],col=x$cluster)
   points(centroids[c(colx,coly)],col=centroids$cluster,pch=4, cex=3)
   
-  #Sys.sleep(2)
-  
   while (TRUE) {
     convergence <- TRUE
+    #shuffle data
+    x <- x[sample(nrow(x)),]
     #loop through points
     for (r in 1:nrow(x)) {
+      #Sys.sleep(0.5)
+      
       p <- x[r,]
-      #plot data with point being tested
-      plot(x[c(colx,coly)],col=x$cluster)
-      points(p[c(colx,coly)],col=p$cluster,pch=19, cex=1)
       
       #get initial cluster to check for convergence 
       initialCluster <- x[r,]$cluster
+      newCluster <- 0
       testError <- Inf
       
       #check which cluster to reassign to if any
       #loop through clusters
       for (c in 1:k) {
-        cat('Testing Row ',r,' in cluster ',c,'\n')
+        cat('Testing row ',r,' in cluster ',c,'\n')
     
         #set cluster of row being tested
         x[r,]$cluster <- c
@@ -89,19 +89,27 @@ hw_kmeans_ani <- function(x, k, colx, coly) {
         testCentroids <- get_centroids(x,k)
         
         #calculate sum of squares for cluster with row
-        currentError <- get_sum_of_squares(x,k)
+        currentError <- get_sum_of_squares(x,k,testCentroids)
         
         if(currentError < testError) {
-          x[r,]$cluster <- c
           newCluster <- c
           testError <- currentError
           centroids <- testCentroids
         }
       }
       
+      cat('New cluster for row ',r,' is ',newCluster,'\n')
+      x[r,]$cluster <- newCluster
+      
       if (initialCluster != newCluster) {
         convergence = FALSE
       }
+      
+      #plot data with point being tested
+      #plot(x[c(colx,coly)],col=x$cluster)
+      #points(p[c(colx,coly)],col=p$cluster,pch=19, cex=1)
+      #points(centroids[c(colx,coly)],col=centroids$cluster,pch=4, cex=3)
+      
     }
     
     if(convergence){
@@ -111,11 +119,6 @@ hw_kmeans_ani <- function(x, k, colx, coly) {
   
   plot(x[c(colx,coly)],col=x$cluster)
   points(centroids[c(colx,coly)],col=centroids$cluster,pch=4, cex=3)
-  
-  #TODO: Or Randomly Sample Points?
-  #point <- x[0,]
-  #point <- rbind(point,x[sample(nrow(x), 1),])
-  #points(point[c(colx,coly)],col=point$cluster,pch=19, cex=1)
   
 }
 
@@ -128,4 +131,4 @@ newiris$Species <- NULL
 first="Sepal.Length"
 second="Sepal.Width"
 
-hw_kmeans_ani(newiris,3, first, second)
+hw_kmeans(newiris,3, first, second)

@@ -1,14 +1,11 @@
-hw_kmeans <- function(x, k, colx, coly) {
-  
+hw_kmeans <- function(x, k, colx, coly, msg=FALSE, doPlot=FALSE, animation=FALSE, interval=0.07) {
   get_centroids <- function(x, k){
     #split data into clusters
     splitx <- split(x, x$cluster)
-    
     #find dimensions of data, initialise centroids & get column names of data
     dimensions <- ncol(x)-1
     centroids <- x[0,]
     columnNames <- colnames(centroids)
-    
     #loop through clusters
     for (c in 1:k) {
       clusterCentroids <- c()
@@ -43,7 +40,6 @@ hw_kmeans <- function(x, k, colx, coly) {
           ssd <- ssd + ((m-centroids[c,d])^2)
         }
         ssd < ssd/(nrow(cluster[,d])-1)
-        
         #add dimension error to total
         error <- error + ssd
       }
@@ -55,23 +51,31 @@ hw_kmeans <- function(x, k, colx, coly) {
   cluster <- sample(1:k,nrow(x),replace = TRUE)
   x$cluster <- cluster
   
+  #index for sorting
+  x$index <- as.numeric(row.names(x))
+  
   #set initial centroids as means of clusters
   centroids <- get_centroids(x,k)
   
-  #plot intial clusters and centroids
-  plot(x[c(colx,coly)],col=x$cluster)
-  points(centroids[c(colx,coly)],col=centroids$cluster,pch=4, cex=3)
+  if(doPlot){
+    #plot intial clusters and centroids
+    plot(x[c(colx,coly)],col=x$cluster,main='Initial Clusters/Centroids')
+    points(centroids[c(colx,coly)],col=centroids$cluster,pch=4, cex=3)
+  }
   
+  #interation for plots
+  i <- 1
   while (TRUE) {
     convergence <- TRUE
     #shuffle data
     x <- x[sample(nrow(x)),]
     #loop through points
     for (r in 1:nrow(x)) {
-      #Sys.sleep(0.5)
-      
+      #add a delay for animation
+      if (animation) {
+        Sys.sleep(interval)
+      }
       p <- x[r,]
-      
       #get initial cluster to check for convergence 
       initialCluster <- x[r,]$cluster
       newCluster <- 0
@@ -80,7 +84,9 @@ hw_kmeans <- function(x, k, colx, coly) {
       #check which cluster to reassign to if any
       #loop through clusters
       for (c in 1:k) {
-        cat('Testing row ',r,' in cluster ',c,'\n')
+        if(msg){
+          cat('Testing row ',r,' in cluster ',c,'\n')
+        }
     
         #set cluster of row being tested
         x[r,]$cluster <- c
@@ -95,31 +101,39 @@ hw_kmeans <- function(x, k, colx, coly) {
           newCluster <- c
           testError <- currentError
           centroids <- testCentroids
+          if (msg) {
+            cat('Cluster for row ',r,' is ',newCluster,'\n')
+          }
         }
       }
       
-      cat('New cluster for row ',r,' is ',newCluster,'\n')
       x[r,]$cluster <- newCluster
       
+      #plot data with point being tested
+      if (animation){
+        plot(x[c(colx,coly)],col=x$cluster,main='Clustering in Progress',sub=paste('Iteration', i, 'Point', r, sep=' '))
+        points(p[c(colx,coly)],col=p$cluster,pch=19, cex=1)
+        points(centroids[c(colx,coly)],col=centroids$cluster,pch=4, cex=3) 
+      }
+      #if a cluster has moved loop again
       if (initialCluster != newCluster) {
         convergence = FALSE
       }
-      
-      #plot data with point being tested
-      #plot(x[c(colx,coly)],col=x$cluster)
-      #points(p[c(colx,coly)],col=p$cluster,pch=19, cex=1)
-      #points(centroids[c(colx,coly)],col=centroids$cluster,pch=4, cex=3)
-      
     }
-    
+    #if we have reached convergence stop iterating
     if(convergence){
       break
     }
+    i<-i+1
+  }
+  if(doPlot){
+    #plot final clusters
+    plot(x[c(colx,coly)],col=x$cluster,main='Final Clusters')
+    points(centroids[c(colx,coly)],col=centroids$cluster,pch=4, cex=3)
   }
   
-  plot(x[c(colx,coly)],col=x$cluster)
-  points(centroids[c(colx,coly)],col=centroids$cluster,pch=4, cex=3)
-  
+  #reorder data to return
+  return(x[order(x$index), ])
 }
 
 
@@ -131,4 +145,11 @@ newiris$Species <- NULL
 first="Sepal.Length"
 second="Sepal.Width"
 
-hw_kmeans(newiris,3, first, second)
+#kc <- kmeans(newiris, 3)
+kc <- hw_kmeans(newiris,3, first, second, animation=TRUE)
+
+kc
+table(iris$Species, kc$cluster)
+
+#plot(newiris[c(first, second)], col=kc$cluster)
+#points(kc$centers[,c(first, second)], col=1:3, pch=8, cex=2)

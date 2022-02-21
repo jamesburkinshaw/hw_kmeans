@@ -60,6 +60,8 @@ hw_kmeans <- function(x, k, colx, coly, msg=FALSE, doPlot=FALSE, animation=FALSE
     #index for sorting
     x$index <- as.numeric(row.names(x))
     
+    #TODO:Re-add random selection of clusters from data as an option
+    
     #set initial centroids as means of clusters
     centroids <- get_centroids(x,k)
     

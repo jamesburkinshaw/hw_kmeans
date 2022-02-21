@@ -1,4 +1,4 @@
-hw_kmeans <- function(x, k, colx, coly, msg=FALSE, doPlot=FALSE, animation=FALSE, interval=0.07) {
+hw_kmeans <- function(x, k, colx, coly, msg=FALSE, doPlot=FALSE, animation=FALSE, interval=0.07, nstart=5) {
   get_centroids <- function(x, k){
     #split data into clusters
     splitx <- split(x, x$cluster)
@@ -47,93 +47,116 @@ hw_kmeans <- function(x, k, colx, coly, msg=FALSE, doPlot=FALSE, animation=FALSE
     return(error)
   }
   
-  #Assign points to cluster at random
-  cluster <- sample(1:k,nrow(x),replace = TRUE)
-  x$cluster <- cluster
+  referenceError<-Inf
   
-  #index for sorting
-  x$index <- as.numeric(row.names(x))
-  
-  #set initial centroids as means of clusters
-  centroids <- get_centroids(x,k)
-  
-  if(doPlot){
-    #plot intial clusters and centroids
-    plot(x[c(colx,coly)],col=x$cluster,main='Initial Clusters/Centroids')
-    points(centroids[c(colx,coly)],col=centroids$cluster,pch=4, cex=3)
-  }
-  
-  #interation for plots
-  i <- 1
-  while (TRUE) {
-    convergence <- TRUE
-    #shuffle data
-    x <- x[sample(nrow(x)),]
-    #loop through points
-    for (r in 1:nrow(x)) {
-      #add a delay for animation
-      if (animation) {
-        Sys.sleep(interval)
-      }
-      p <- x[r,]
-      #get initial cluster to check for convergence 
-      initialCluster <- x[r,]$cluster
-      newCluster <- 0
-      testError <- Inf
-      
-      #check which cluster to reassign to if any
-      #loop through clusters
-      for (c in 1:k) {
-        if(msg){
-          cat('Testing row ',r,' in cluster ',c,'\n')
-        }
+  for (s in 1:nstart) {
     
-        #set cluster of row being tested
-        x[r,]$cluster <- c
+    cat('Start ', s, '\n')
+    
+    #Assign points to cluster at random
+    cluster <- sample(1:k,nrow(x),replace = TRUE)
+    x$cluster <- cluster
+    
+    #index for sorting
+    x$index <- as.numeric(row.names(x))
+    
+    #set initial centroids as means of clusters
+    centroids <- get_centroids(x,k)
+    
+    if(doPlot){
+      #plot intial clusters and centroids
+      plot(x[c(colx,coly)],col=x$cluster,main='Initial Clusters/Centroids',sub=paste('Start',s,sep=' '))
+      points(centroids[c(colx,coly)],col=centroids$cluster,pch=4, cex=3)
+    }
+    
+    #interation for plots
+    i <- 1
+    while (TRUE) {
+      convergence <- TRUE
+      #shuffle data
+      x <- x[sample(nrow(x)),]
+      #loop through points
+      for (r in 1:nrow(x)) {
+        #add a delay for animation
+        if (animation) {
+          Sys.sleep(interval)
+        }
+        p <- x[r,]
+        #get initial cluster to check for convergence 
+        initialCluster <- x[r,]$cluster
+        newCluster <- 0
+        testError <- Inf
         
-        #calculate centroids for cluster including new point
-        testCentroids <- get_centroids(x,k)
-        
-        #calculate sum of squares for cluster with row
-        currentError <- get_sum_of_squares(x,k,testCentroids)
-        
-        if(currentError < testError) {
-          newCluster <- c
-          testError <- currentError
-          centroids <- testCentroids
-          if (msg) {
-            cat('Cluster for row ',r,' is ',newCluster,'\n')
+        #check which cluster to reassign to if any
+        #loop through clusters
+        for (c in 1:k) {
+          if(msg){
+            cat('Testing row ',r,' in cluster ',c,'\n')
+          }
+      
+          #set cluster of row being tested
+          x[r,]$cluster <- c
+          
+          #calculate centroids for cluster including new point
+          testCentroids <- get_centroids(x,k)
+          
+          #calculate sum of squares for cluster with row
+          currentError <- get_sum_of_squares(x,k,testCentroids)
+          
+          if(currentError < testError) {
+            newCluster <- c
+            testError <- currentError
+            centroids <- testCentroids
+            if (msg) {
+              cat('Cluster for row ',r,' is ',newCluster,'\n')
+            }
           }
         }
+        
+        x[r,]$cluster <- newCluster
+        
+        #plot data with point being tested
+        if (animation){
+          plot(x[c(colx,coly)],col=x$cluster,main='Clustering in Progress',sub=paste('Iteration', i, 'Point', r, 'Start', s, sep=' '))
+          points(p[c(colx,coly)],col=p$cluster,pch=19, cex=1)
+          points(centroids[c(colx,coly)],col=centroids$cluster,pch=4, cex=3) 
+        }
+        #if a cluster has moved loop again
+        if (initialCluster != newCluster) {
+          convergence = FALSE
+        }
       }
-      
-      x[r,]$cluster <- newCluster
-      
-      #plot data with point being tested
-      if (animation){
-        plot(x[c(colx,coly)],col=x$cluster,main='Clustering in Progress',sub=paste('Iteration', i, 'Point', r, sep=' '))
-        points(p[c(colx,coly)],col=p$cluster,pch=19, cex=1)
-        points(centroids[c(colx,coly)],col=centroids$cluster,pch=4, cex=3) 
+      #if we have reached convergence stop iterating
+      if(convergence){
+        break
       }
-      #if a cluster has moved loop again
-      if (initialCluster != newCluster) {
-        convergence = FALSE
-      }
+      i<-i+1
     }
-    #if we have reached convergence stop iterating
-    if(convergence){
-      break
-    }
-    i<-i+1
+    
+    #calculate sum of squares of clustering start
+    currentError <- get_sum_of_squares(x,k,centroids)
+    cat('Error of current cluster ', currentError, '\n')
+    
+    #if it is the lowest save it to return
+    if (currentError < referenceError) {
+      cat('Iteration ', s, ' is the new champion. Current Error=', currentError, '\n')
+      startReturn <- s
+      clusterReturn <- x
+      centroidsReturn <- centroids
+      referenceError <- currentError
+    } 
   }
+  
   if(doPlot){
     #plot final clusters
-    plot(x[c(colx,coly)],col=x$cluster,main='Final Clusters')
-    points(centroids[c(colx,coly)],col=centroids$cluster,pch=4, cex=3)
+    plot(clusterReturn[c(colx,coly)],col=clusterReturn$cluster,main='Final Clusters', sub=paste('Start', startReturn, sep=' '))
+    points(centroidsReturn[c(colx,coly)],col=centroidsReturn$cluster,pch=4, cex=3)
   }
   
   #reorder data to return
-  return(x[order(x$index), ])
+  toReturn <- list(clusterReturn[order(clusterReturn$index), ], centroidsReturn)
+  class(toReturn) <- 'Cluster'
+  return(toReturn)
 }
 
 
@@ -146,10 +169,10 @@ first="Sepal.Length"
 second="Sepal.Width"
 
 #kc <- kmeans(newiris, 3)
-kc <- hw_kmeans(newiris,3, first, second, animation=TRUE)
+kc <- hw_kmeans(newiris,3, first, second, doPlot = TRUE, )
 
 kc
-table(iris$Species, kc$cluster)
+table(iris$Species, kc[1]$cluster)
 
 #plot(newiris[c(first, second)], col=kc$cluster)
 #points(kc$centers[,c(first, second)], col=1:3, pch=8, cex=2)

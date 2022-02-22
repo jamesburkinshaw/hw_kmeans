@@ -1,23 +1,31 @@
-hw_kmeans <- function(x, k, colx, coly, msg=FALSE, doPlot=FALSE, animation=FALSE, interval=0.07, nstart=5) {
-  get_centroids <- function(x, k){
+hw_kmeans <- function(x, k, colx, coly, msg=FALSE, doPlot=FALSE, animation=FALSE, interval=0.07, nstart=5, random=FALSE) {
+  get_centroids <- function(x, k, randomFlag){
     #split data into clusters
     splitx <- split(x, x$cluster)
     #find dimensions of data, initialise centroids & get column names of data
     dimensions <- ncol(x)-1
     centroids <- x[0,]
     columnNames <- colnames(centroids)
-    #loop through clusters
-    for (c in 1:k) {
-      clusterCentroids <- c()
-      cluster <- data.frame(splitx[c])
-      #loop through dimensions
-      for (d in 1:dimensions) {
-        #get mean of the dimension for the cluster
-        clusterCentroids <- append(clusterCentroids,mean(cluster[,d]))
+    #if random option is set to false calcluate means as centroids
+    if (!randomFlag){
+      #loop through clusters
+      for (c in 1:k) {
+        clusterCentroids <- c()
+        cluster <- data.frame(splitx[c])
+        #loop through dimensions
+        for (d in 1:dimensions) {
+          #get mean of the dimension for the cluster
+          clusterCentroids <- append(clusterCentroids,mean(cluster[,d]))
+        }
+        #add the means of all the dimensions for each cluster
+        clusterCentroids <- append(clusterCentroids,c)
+        centroids <-rbind(centroids,clusterCentroids)
       }
-      #add the means of all the dimensions for each cluster
-      clusterCentroids <- append(clusterCentroids,c)
-      centroids <-rbind(centroids,clusterCentroids)
+    } else {
+      #random option is selected so select a random point from each cluster as centroid
+      for (d in splitx){
+      centroids <- rbind(centroids,d[sample(nrow(d), 1),])
+      }
     }
     #add the column names
     colnames(centroids) <- columnNames
@@ -60,10 +68,8 @@ hw_kmeans <- function(x, k, colx, coly, msg=FALSE, doPlot=FALSE, animation=FALSE
     #index for sorting
     x$index <- as.numeric(row.names(x))
     
-    #TODO:Re-add random selection of clusters from data as an option
-    
     #set initial centroids as means of clusters
-    centroids <- get_centroids(x,k)
+    centroids <- get_centroids(x,k,random)
     
     if(doPlot){
       #plot intial clusters and centroids
@@ -71,7 +77,7 @@ hw_kmeans <- function(x, k, colx, coly, msg=FALSE, doPlot=FALSE, animation=FALSE
       points(centroids[c(colx,coly)],col=centroids$cluster,pch=4, cex=3)
     }
     
-    #interation for plots
+    #iterate until
     i <- 1
     while (TRUE) {
       convergence <- TRUE
@@ -100,7 +106,7 @@ hw_kmeans <- function(x, k, colx, coly, msg=FALSE, doPlot=FALSE, animation=FALSE
           x[r,]$cluster <- c
           
           #calculate centroids for cluster including new point
-          testCentroids <- get_centroids(x,k)
+          testCentroids <- get_centroids(x,k,FALSE)
           
           #calculate sum of squares for cluster with row
           currentError <- get_sum_of_squares(x,k,testCentroids)
@@ -156,6 +162,7 @@ hw_kmeans <- function(x, k, colx, coly, msg=FALSE, doPlot=FALSE, animation=FALSE
   }
   
   #reorder data to return
+  #TODO: Fix Class return
   toReturn <- list(clusterReturn[order(clusterReturn$index), ], centroidsReturn)
   class(toReturn) <- 'Cluster'
   return(toReturn)
@@ -171,10 +178,10 @@ first="Sepal.Length"
 second="Sepal.Width"
 
 #kc <- kmeans(newiris, 3)
-kc <- hw_kmeans(newiris,3, first, second, doPlot = TRUE, )
+kc <- hw_kmeans(newiris,3, first, second, doPlot = TRUE, random=FALSE)
 
 kc
-table(iris$Species, kc[1]$cluster)
+#table(iris$Species, kc[1]$cluster)
 
 #plot(newiris[c(first, second)], col=kc$cluster)
 #points(kc$centers[,c(first, second)], col=1:3, pch=8, cex=2)

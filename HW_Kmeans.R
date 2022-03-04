@@ -36,18 +36,20 @@
       error <- 0
       #split data into clusters
       splitx <- split(x, x$cluster)
-      dimensions <- ncol(x)-1
+      dimensions <- ncol(x)-2
       #loop through clusters
       for (c in 1:k) {
-        cluster <- data.frame(splitx[c])
+        cluster <- as.data.frame(splitx[c])
+        #print(cluster)
         #loop through dimensions
         for (d in 1:dimensions) {
           ssd <- 0
           #loop through rows in dimension
           for (m in cluster[,d]) {
             ssd <- ssd + ((m-centroids[c,d])^2)
+            #cat('Value: ', m, ' Mean: ', centroids[c,d], ' SSD: ', ssd, '\n')
           }
-          ssd < ssd/(nrow(cluster[,d])-1)
+          ssd <- ssd/(nrow(cluster)-1)
           #add dimension error to total
           error <- error + ssd
         }
@@ -75,7 +77,7 @@
       #set initial centroids as means of clusters
       centroids <- get_centroids(x,k,random)
       
-      if(doPlot && animation){
+      if(doPlot|| animation){
         #plot intial clusters and centroids
         plot(x[c(colx,coly)],col=x$cluster,main='Initial Clusters/Centroids',sub=paste('Start',s,sep=' '))
         points(centroids[c(colx,coly)],col=centroids$cluster,pch=4, cex=3)
@@ -212,25 +214,23 @@
   first="Sepal.Length"
   second="Sepal.Width"
   
-  #kc <- data.frame(hw_kmeans(newiris,3, first, second, nstart = 1, doPlot=TRUE)[1])
+  #kc <- data.frame(hw_kmeans(newiris,3, first, second, nstart = 1,doPlot=TRUE)[1])
   
   #initialise clusters for iris
   irisClusterUpdates <- newiris
   irisClusterUpdates$cluster <- 0
   irisClusterUpdates$updates <- -1
+  irisClusterUpdates
   
   #loop to see how often points change
-  for (i in 1:10) {
-    #initialise clusters to test (using R kmeans)
-    #irisTest <- newiris
-    #irisTestKM <- kmeans(irisTest, 3)
-    #irisTest$cluster <- irisTestKM$cluster
-    #testCenters <- irisTestKM$centers
+  for (i in 1:100) {
+    #initialise clusters to test
+    irisTest <- newiris
+    irisTestKM <- kmeans(irisTest, 3)
+    irisTest$cluster <- irisTestKM$cluster
     
-    #initialise clusters to test (using custom method)
-    irisTestKM <- hw_kmeans(newiris,3, first, second, nstart = 1, doPlot=TRUE)
-    irisTest <- as.data.frame(irisTestKM[1])
-    testCenters <- as.data.frame(irisTestKM[2])
+    #initialise centers
+    testCenters <- irisTestKM$centers
     testCenters <- cbind(originalCluster = 1:nrow(testCenters), testCenters)
     
     #normalise centroids by ordering on column
@@ -244,8 +244,8 @@
     for (r in 1:nrow(irisTest)) {
       for (c in 1:nrow(testCenters)) {
         if (irisTest[r,]$cluster == testCenters[c,]$originalCluster){
-              #cat('Old Center: ', irisTest[r,]$cluster ,' New Cluster: ', testCenters[c,]$newCluster, '\n')
-              newCluster <- testCenters[c,]$newCluster
+          #cat('Old Center: ', irisTest[r,]$cluster ,' New Cluster: ', testCenters[c,]$newCluster, '\n')
+          newCluster <- testCenters[c,]$newCluster
         }
       }
       irisTest[r,]$cluster <- newCluster
@@ -269,16 +269,13 @@
     }
   }
   
+  irisClusterUpdates
   irisClusterUpdates$clusterCat <- factor(irisClusterUpdates$cluster)
   
-  #ggplot2 library required
   #install.packages("ggplot2")
-  library(ggplot2)
   
+  library(ggplot2)
   ggplot(irisClusterUpdates, aes(x=Sepal.Length, y=Sepal.Width, size = updates, color=clusterCat)) + 
     geom_point(alpha=0.7) +
     labs(size='Cluster Changes', color='Final Cluster') +
     ggtitle('Iris Clustering Changes')
-  
-    
-  
